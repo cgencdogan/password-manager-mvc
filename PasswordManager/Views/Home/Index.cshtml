@@ -1,0 +1,344 @@
+﻿@model Common.ViewModels.HomeIndexVM
+@{
+    ViewData["Title"] = "Kayıtlı Şifreler";
+}
+<div class="row">
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="nav-icon fa fa-file-shield"></i> Kayıtlı Şifreler</h3>
+                <div class="card-tools">
+                    <button type="button" class="btn btn-sm btn-block bg-gradient-info btn-add-modal" data-bs-toggle="modal" data-bs-target="#modal-add-password">
+                        <i class="fa fa-square-plus"></i> <span class="ml-1"> Şifre Kaydet</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body" style="font-size:0.8em;">
+                @if (!Model.SavedPasswords.Success || Model.SavedPasswords.Value.Count < 1) {
+                    <span>Kayıtlı şifreniz bulunmamaktadır</span>
+                }
+                else {
+                    <table id="table-saved-passwords" class="display cell-border" style="width: 100%">
+                        <thead>
+                            <tr>
+                                <th>URL</th>
+                                <th>Açıklama</th>
+                                <th>Kategori</th>
+                                <th>Kullanıcı Adı</th>
+                                <th>Şifre</th>
+                                <th>Hidden Şifre</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var savedPassword in Model.SavedPasswords.Value) {
+                                <tr data-id="@savedPassword.Id">
+                                    <td class="td-url">@savedPassword.Url</td>
+                                    <td class="td-description">@savedPassword.Description</td>
+                                    <td class="td-category">
+                                        @if (Model.Categories.Value.Any(c => c.Id == savedPassword.CategoryId)) {
+                                            <span data-id="@savedPassword.CategoryId">@Model.Categories.Value.FirstOrDefault(c => c.Id == savedPassword.CategoryId).Name</span>
+                                        }
+                                        else {
+                                            <span data-id="0">Diğer</span>
+                                        }
+                                    </td>
+                                    <td class="td-username">@savedPassword.UserName</td>
+                                    <td class="td-password"><span data-password="@savedPassword.Password" class="text-bold">************</span> <a href="#" style="float:right" class="show-password"><i class="fa fa-eye-slash" aria-hidden="true"></i></a></td>
+                                    <td>@savedPassword.Password</td>
+                                    <td class="dt-center">
+                                        <button type="button" class="btn bg-gradient-primary btn-xs btn-show-update">Düzenle</button>
+                                        <button type="button" class="btn bg-gradient-danger btn-xs btn-delete-password">Sil</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="nav-icon fa fa-table-list"></i> Kategoriler</h3>
+                <div class="card-tools">
+                    <button type="button" class="btn btn-sm btn-block bg-gradient-info" data-bs-toggle="modal" data-bs-target="#modal-add-category">
+                        <i class="fa fa-square-plus"></i> <span class="ml-1"> Ekle</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body" style="font-size:0.8em;">
+                @if (!Model.Categories.Success || Model.Categories.Value.Count < 1) {
+                    <span>Tanımlı kategoriniz bulunmamaktadır.</span>
+                }
+                else {
+                    <table id="table-categories" class="display cell-border compact">
+                        <thead>
+                            <tr>
+                                <th>Adı</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var category in Model.Categories.Value) {
+                                <tr data-id="@category.Id">
+                                    <td><span>@category.Name</span><a href="#" style="float:right; font-size:0.8em;" class="delete-category btn-sm btn-danger"><i class="fa fa-trash" aria-hidden="true"></i></a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $("#btn-update-password").toggle(false);
+
+            //Şifre oluşturma
+            $("#btn-generate-password").on("click", function () {
+                var generatedPasswordLength = 16;
+                var characterCategories = ["ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "!-_*+&$()", "0123456789"];
+                var generatedPasswordArray = [];
+
+                //Her karakter kategorisinden en az 1 karakter ekleniyor
+                $.each(characterCategories, function (index, value) {
+                    generatedPasswordArray.push(value[Math.floor(Math.random() * value.length)])
+                });
+
+                var allChars = characterCategories.join("");
+
+                for (let i = 0; i < generatedPasswordLength; i++) {
+                    generatedPasswordArray.push(allChars[Math.floor(Math.random() * allChars.length)]);
+                }
+
+                //Diziye atılan karakterleri rastgele karıştırma
+                var generatedPassword = generatedPasswordArray.sort(() => Math.random() - 0.5).join("");
+                $("#add-password").val(generatedPassword);
+            });
+
+            //Modal eklemek için açıldığında inputları sıfırlar ve güncelleme butonunu gizler
+            $(".btn-add-modal").on("click", function () {
+                $("#btn-update-password").toggle(false);
+                $("#btn-save-password").toggle(true);
+
+                $("#modal-add-title").html("Şifre Kaydet");
+
+                $(".add-modal-input").val("");
+                $("#add-category").prop("selectedIndex", $('#add-category option').length - 1);
+            });
+
+            //Modal şifre alanı maskeleme toggle
+            $("#div-add-password a").on("click", function (event) {
+                event.preventDefault();
+                if ($("#div-add-password input").attr("type") == "text") {
+                    $("#div-add-password input").attr("type", "password");
+                    $("#div-add-password i").addClass("fa-eye-slash");
+                    $("#div-add-password i").removeClass("fa-eye");
+                }
+                else if ($("#div-add-password input").attr("type") == "password") {
+                    $("#div-add-password input").attr("type", "text");
+                    $("#div-add-password i").removeClass("fa-eye-slash");
+                    $("#div-add-password i").addClass("fa-eye");
+                }
+            });
+
+            //DataTable şifre alanı maskeleme toggle
+            $("#table-saved-passwords").on("click", ".show-password", function (event) {
+                var passwordSpan = $(this).siblings("span")
+                passwordSpan.text(passwordSpan.data("password"));
+                $(this).children("i").removeClass("fa-eye-slash");
+                $(this).children("i").addClass("fa-eye");
+                $(this).addClass("hide-password");
+                $(this).removeClass("show-password");
+            });
+            //DataTable şifre alanı maskeleme toggle
+            $("#table-saved-passwords").on("click", ".hide-password", function (event) {
+                var passwordSpan = $(this).siblings("span")
+                passwordSpan.text(("************"));
+                $(this).children("i").addClass("fa-eye-slash");
+                $(this).children("i").removeClass("fa-eye");
+                $(this).removeClass("hide-password");
+                $(this).addClass("show-password");
+            });
+
+            //Şifre güncelleme için modal düzenlemesi
+            $("#table-saved-passwords").on("click", ".btn-show-update", function (event) {
+                var savedPasswordId = $(this).parents("tr").data("id");
+                var row = $(this).parents("tr");
+
+                var categoryId = row.children(".td-category").children("span").data("id");
+
+                $("#update-password-id").val($(this).parents("tr").data("id"));
+                $("#add-url").val(row.children(".td-url").html());
+                $("#add-username").val(row.children(".td-username").html());
+                $("#add-password").val(row.children(".td-password").children("span").data("password"));
+                $("#add-description").val(row.children(".td-description").html());
+                $("#add-category").val(categoryId);
+
+                if (categoryId == 0) {
+                    $("#add-category").prop("selectedIndex", $('#add-category option').length - 1);
+                }
+
+                $("#btn-update-password").toggle(true);
+                $("#btn-save-password").toggle(false);
+
+                $("#modal-add-title").html("Şifre Güncelle");
+                $("#modal-add-password").modal('show');
+            });
+
+            //Şifre ekleme AJAX
+            $("#btn-save-password").on("click", function () {
+                var data = {
+                    url: $("#add-url").val(),
+                    username: $("#add-username").val(),
+                    password: $("#add-password").val(),
+                    categoryId: $("#add-category").val(),
+                    description: $("#add-description").val(),
+                };
+
+                ajaxCallWithSwal("POST", "/Home/SavePassword", data);
+            });
+
+            //Şifre güncelleme AJAX
+            $("#btn-update-password").on("click", function () {
+                var data = {
+                    id: $("#update-password-id").val(),
+                    username: $("#add-username").val(),
+                    password: $("#add-password").val(),
+                    description: $("#add-description").val(),
+                    url: $("#add-url").val(),
+                    categoryId: $("#add-category").val(),
+                };
+
+                ajaxCallWithSwal("PUT", "/Home/UpdatePassword", data);
+            });
+
+            //Şifre silme AJAX
+            $("#table-saved-passwords").on("click", ".btn-delete-password", function (event) {
+                var savedPasswordId = $(this).parents("tr").data("id");
+                var row = $(this).parents("tr");
+
+                Swal.fire({
+                    icon: "warning",
+                    title: "<u>" + $(row).children(".td-url").html() + "</u> adresi için kaydettiğiniz şifre silinecek.",
+                    showCancelButton: true,
+                    cancelButtonText: "Vazgeç",
+                    confirmButtonText: "Sil",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        var data = {
+                            savedPasswordId: savedPasswordId
+                        };
+
+                        ajaxCallWithSwal("DELETE", "/Home/DeletePassword", data)
+                    }
+                })
+            });
+
+            //Kategori ekleme AJAX
+            $("#btn-add-category").on("click", function () {
+                var data = {
+                    categoryName: $("#add-category-name").val()
+                };
+
+                ajaxCallWithSwal("POST", "/Home/AddCategory", data);
+            });
+
+            //Kategori silme AJAX
+            $("#table-categories").on("click", ".delete-category", function (event) {
+                var categoryId = $(this).parents("tr").data("id");
+                var categoryName = $(this).siblings("span").html();
+
+                Swal.fire({
+                    icon: "warning",
+                    title: "<u>" + categoryName + "</u> kategorisi silinecek.",
+                    showCancelButton: true,
+                    cancelButtonText: "Vazgeç",
+                    confirmButtonText: "Sil",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        var data = {
+                            categoryId: categoryId
+                        };
+                        ajaxCallWithSwal("DELETE", "/Home/DeleteCategory", data);
+                    }
+                })
+            });
+
+            //Sonuca göre swal gösteren ajax isteği fonksiyonu
+            function ajaxCallWithSwal(type, url, data) {
+                $.ajax({
+                    type: type,
+                    url: url,
+                    timeout: 5000,
+                    data: data,
+                    error: function (result) {
+                        console.log(result);
+                        swalWithTimer("error", result.message, 2000, false);
+                    },
+                    success: function (result) {
+                        console.log(result);
+                        swalWithTimer("success", result.message, 2000, true);
+                    }
+                })
+            }
+
+            //Timer bittiğinde kapanan swal fonksiyonu
+            function swalWithTimer(icon, title, timerDuration, pageReload) {
+                let timerInterval
+                Swal.fire({
+                    icon: icon,
+                    title: title,
+                    timer: timerDuration,
+                    timerProgressBar: true,
+                    didOpen: () => {
+                        Swal.showLoading()
+                        const b = Swal.getHtmlContainer().querySelector('b')
+                        timerInterval = setInterval(() => {
+                            b.textContent = Swal.getTimerLeft()
+                        }, 100)
+                    },
+                    willClose: () => {
+                        clearInterval(timerInterval)
+                    }
+                }).then((result) => {
+                    if (pageReload == true) {
+                        location.reload();
+                    };
+                })
+            }
+
+            //Kayıtlı şifreler DataTable
+            $("#table-saved-passwords").DataTable({
+                responsive: true,
+                columnDefs: [
+                    { responsivePriority: 1, targets: 0 },
+                    { responsivePriority: 2, targets: 3 },
+                    { responsivePriority: 4, targets: 4 },
+                    { responsivePriority: 3, targets: 5 },
+                    {
+                        targets: [5],
+                        visible: false
+                    }
+                ],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json',
+                },
+            });
+
+            //Kategoriler DataTable
+            $("#table-categories").DataTable(
+                {
+                    "paging": false,
+                    "searching": false,
+                    "bInfo": false
+                });
+        });
+    </script>
+}
